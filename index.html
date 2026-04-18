@@ -1,8 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>FarmSaathi / ಫಾರ್ಮ್ ಸಾಥಿ</title>
-
+<title>FarmSaathi</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
@@ -40,10 +39,9 @@ h1{color:white;margin-top:20px;}
 .voiceBtn{
   padding:8px;
   margin-left:5px;
-  font-size:16px;
   border-radius:50%;
-  cursor:pointer;
   background:#ffcc00;
+  cursor:pointer;
 }
 
 input,select{
@@ -78,7 +76,7 @@ td{padding:8px;border:1px solid #ccc;}
 .profit{color:green;font-weight:bold;}
 .loss{color:red;font-weight:bold;}
 
-.summary, .expense-box, #topCropBox{
+.summary,#topCropBox{
   background:white;
   width:90%;
   max-width:350px;
@@ -89,26 +87,17 @@ td{padding:8px;border:1px solid #ccc;}
   box-shadow:0 3px 8px gray;
 }
 
-#lossAlertPopup{
-  display:none;
-  position:fixed;
-  top:10px;
-  left:50%;
-  transform:translateX(-50%);
-  background:red;
-  color:white;
-  padding:15px;
-  border-radius:8px;
+.status{
+  font-size:12px;
+  color:gray;
 }
 </style>
 </head>
 
 <body>
 
-<div id="lossAlertPopup"></div>
-
-<h1 id="title">🌾 FarmSaathi</h1>
-<p style="color:white">Crop Expense & Profit Tracker</p>
+<h1 id="title"></h1>
+<p id="subtitle" style="color:white"></p>
 
 <button onclick="setEnglish()">English</button>
 <button onclick="setKannada()">ಕನ್ನಡ</button>
@@ -116,213 +105,237 @@ td{padding:8px;border:1px solid #ccc;}
 <div class="container">
 
 <div class="input-group">
-<input type="text" id="village" placeholder="Village Name">
+<input type="text" id="village">
 <button class="voiceBtn" onclick="startListening('village')">🎤</button>
 </div>
 
 <div class="input-group">
-<input type="text" id="crop" placeholder="Crop Name" oninput="suggestPrice()">
+<input type="text" id="crop">
 <button class="voiceBtn" onclick="startListening('crop')">🎤</button>
 </div>
 
+<p class="status" id="voiceStatus"></p>
+
 <select id="season"></select>
 
-<h3>Expense Details</h3>
-<input type="number" id="seeds" placeholder="Seeds Cost">
-<input type="number" id="fertilizer" placeholder="Fertilizer Cost">
-<input type="number" id="labour" placeholder="Labour Cost">
-<input type="number" id="irrigation" placeholder="Irrigation Cost">
+<h3 id="expenseLabel"></h3>
+<input type="number" id="seeds">
+<input type="number" id="fertilizer">
+<input type="number" id="labour">
+<input type="number" id="irrigation">
 
-<h3>Market Details</h3>
-<input type="number" id="quantity" placeholder="Quantity (kg)">
-<input type="number" id="rate" placeholder="Rate per kg">
+<h3 id="marketLabel"></h3>
+<input type="number" id="quantity">
+<input type="number" id="rate">
 
-<button onclick="addRecord()">Add Record</button>
-<button onclick="clearForm()">Clear</button>
-<button onclick="resetData()">Reset</button>
+<button id="addBtn" onclick="addRecord()"></button>
+<button id="clearBtn" onclick="clearForm()"></button>
 
 </div>
 
 <div class="summary">
-<h3>Total Profit: ₹ <span id="totalProfit">0</span></h3>
+<h3 id="totalLabel"></h3>
 </div>
 
 <table>
 <thead>
 <tr>
-<th>Village</th>
-<th>Crop</th>
-<th>Season</th>
-<th>Expense</th>
-<th>Income</th>
-<th>Profit</th>
-<th>Action</th>
+<th id="thVillage"></th>
+<th id="thCrop"></th>
+<th id="thSeason"></th>
+<th id="thExpense"></th>
+<th id="thIncome"></th>
+<th id="thProfit"></th>
+<th id="thAction"></th>
 </tr>
 </thead>
 <tbody id="tableData"></tbody>
 </table>
 
-<div class="expense-box">
-<h3>Expense Breakdown</h3>
-<p>Seeds: ₹ <span id="seedTotal">0</span></p>
-<p>Fertilizer: ₹ <span id="fertTotal">0</span></p>
-<p>Labour: ₹ <span id="labourTotal">0</span></p>
-<p>Irrigation: ₹ <span id="irrTotal">0</span></p>
-</div>
-
-<div id="topCropBox">Top Crop: -</div>
+<div id="topCropBox"></div>
 
 <script>
 
-let currentLang = "en";
-let records = JSON.parse(localStorage.getItem("farmData")) || [];
+let currentLang="en";
+let records=JSON.parse(localStorage.getItem("farmData"))||[];
 
-const seasons = {
+const seasons={
   en:["Kharif","Rabi","Zaid"],
   kn:["ಖರಿಫ್","ರಬಿ","ಜೈದ್"]
 };
 
-const marketPrices = {
-  "Rice":25,"Wheat":20,"Maize":18
+const t={
+  en:{
+    title:"🌾 FarmSaathi",
+    subtitle:"Crop Expense & Profit Tracker",
+    village:"Village (type or 🎤)",
+    crop:"Crop (type or 🎤)",
+    expense:"Expense",
+    market:"Market",
+    seeds:"Seeds",
+    fertilizer:"Fertilizer",
+    labour:"Labour",
+    irrigation:"Irrigation",
+    quantity:"Quantity",
+    rate:"Rate",
+    add:"Add",
+    clear:"Clear",
+    total:"Total Profit",
+    top:"Top Crop",
+    villageH:"Village",
+    cropH:"Crop",
+    seasonH:"Season",
+    expenseH:"Expense",
+    incomeH:"Income",
+    profitH:"Profit",
+    actionH:"Action"
+  },
+  kn:{
+    title:"🌾 ಫಾರ್ಮ್ ಸಾಥಿ",
+    subtitle:"ಬೆಳೆ ವೆಚ್ಚ ಮತ್ತು ಲಾಭ ಟ್ರ್ಯಾಕರ್",
+    village:"ಗ್ರಾಮ (ಟೈಪ್ ಅಥವಾ 🎤)",
+    crop:"ಬೆಳೆ (ಟೈಪ್ ಅಥವಾ 🎤)",
+    expense:"ವೆಚ್ಚ",
+    market:"ಮಾರ್ಕೆಟ್",
+    seeds:"ಬೀಜ",
+    fertilizer:"ರಸಗೊಬ್ಬರ",
+    labour:"ಕಾರ್ಮಿಕ",
+    irrigation:"ನೀರಾವರಿ",
+    quantity:"ಪ್ರಮಾಣ",
+    rate:"ದರ",
+    add:"ಸೇರಿಸಿ",
+    clear:"ಖಾಲಿ ಮಾಡಿ",
+    total:"ಒಟ್ಟು ಲಾಭ",
+    top:"ಅತ್ಯುತ್ತಮ ಬೆಳೆ",
+    villageH:"ಗ್ರಾಮ",
+    cropH:"ಬೆಳೆ",
+    seasonH:"ಸೀಸನ್",
+    expenseH:"ವೆಚ್ಚ",
+    incomeH:"ಆದಾಯ",
+    profitH:"ಲಾಭ",
+    actionH:"ಕ್ರಿಯಾ"
+  }
 };
 
-// 🔥 FIXED VOICE FUNCTION
-function startListening(inputId){
+function updateLang(){
+  let x=t[currentLang];
+
+  title.innerText=x.title;
+  subtitle.innerText=x.subtitle;
+
+  village.placeholder=x.village;
+  crop.placeholder=x.crop;
+
+  expenseLabel.innerText=x.expense;
+  marketLabel.innerText=x.market;
+
+  seeds.placeholder=x.seeds;
+  fertilizer.placeholder=x.fertilizer;
+  labour.placeholder=x.labour;
+  irrigation.placeholder=x.irrigation;
+
+  quantity.placeholder=x.quantity;
+  rate.placeholder=x.rate;
+
+  addBtn.innerText=x.add;
+  clearBtn.innerText=x.clear;
+
+  totalLabel.innerHTML=x.total+": ₹ <span id='totalProfit'>0</span>";
+
+  thVillage.innerText=x.villageH;
+  thCrop.innerText=x.cropH;
+  thSeason.innerText=x.seasonH;
+  thExpense.innerText=x.expenseH;
+  thIncome.innerText=x.incomeH;
+  thProfit.innerText=x.profitH;
+  thAction.innerText=x.actionH;
+}
+
+function startListening(id){
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-  if (!SpeechRecognition) {
-    alert("Use Google Chrome for voice input");
+  if(!SpeechRecognition){
+    voiceStatus.innerText="Voice not supported";
     return;
   }
 
-  const recognition = new SpeechRecognition();
+  const r=new SpeechRecognition();
+  r.lang=currentLang==="kn"?"kn-IN":"en-IN";
 
-  recognition.lang = currentLang === 'kn' ? 'kn-IN' : 'en-IN';
-  recognition.interimResults = false;
-  recognition.continuous = false;
+  voiceStatus.innerText="🎤 Listening...";
 
-  try {
-    recognition.start();
-  } catch(e){}
+  r.start();
 
-  recognition.onresult = function(event){
-    const text = event.results[0][0].transcript;
-    document.getElementById(inputId).value = text;
-
-    if(inputId==="crop") suggestPrice();
+  r.onresult=e=>{
+    document.getElementById(id).value=e.results[0][0].transcript;
+    voiceStatus.innerText="✔ Done";
   };
 
-  recognition.onerror = function(e){
-    alert("Voice error: "+e.error);
+  r.onerror=e=>{
+    voiceStatus.innerText="❌ Use typing";
   };
-}
 
-function suggestPrice(){
-  let crop = document.getElementById("crop").value.trim();
-  if(marketPrices[crop]){
-    document.getElementById("rate").value = marketPrices[crop];
-  }
+  r.onend=()=>setTimeout(()=>voiceStatus.innerText="",2000);
 }
 
 function addRecord(){
+  let c=crop.value,q=+quantity.value,r=+rate.value;
+  if(!c||q<=0||r<=0){alert("Enter valid");return;}
 
-  let crop=document.getElementById("crop").value;
-  let quantity=Number(document.getElementById("quantity").value);
-  let rate=Number(document.getElementById("rate").value);
+  let exp=(+seeds.value||0)+(+fertilizer.value||0)+(+labour.value||0)+(+irrigation.value||0);
+  let inc=q*r;
+  let p=inc-exp;
 
-  if(!crop || quantity<=0 || rate<=0){
-    alert("Enter valid data");
-    return;
-  }
-
-  let seeds=+document.getElementById("seeds").value||0;
-  let fertilizer=+document.getElementById("fertilizer").value||0;
-  let labour=+document.getElementById("labour").value||0;
-  let irrigation=+document.getElementById("irrigation").value||0;
-
-  let expense=seeds+fertilizer+labour+irrigation;
-  let income=quantity*rate;
-  let profit=income-expense;
-
-  let data={
-    village:document.getElementById("village").value,
-    crop,
-    season:document.getElementById("season").value,
-    seeds,fertilizer,labour,irrigation,
-    expense,income,profit
-  };
-
-  records.push(data);
+  records.push({v:village.value,c, s:season.value,exp,inc,p});
   localStorage.setItem("farmData",JSON.stringify(records));
-  displayRecords();
+  display();
   clearForm();
 }
 
-function displayRecords(){
+function display(){
+  tableData.innerHTML="";
+  let total=0,top={n:"-",p:-Infinity};
 
-  let table=document.getElementById("tableData");
-  table.innerHTML="";
+  records.forEach((x,i)=>{
+    total+=x.p;
+    if(x.p>top.p) top={n:x.c,p:x.p};
 
-  let total=0,seed=0,fert=0,lab=0,irr=0;
-  let top={name:"-",profit:-Infinity};
-
-  records.forEach((item,i)=>{
-
-    total+=item.profit;
-    seed+=item.seeds;
-    fert+=item.fertilizer;
-    lab+=item.labour;
-    irr+=item.irrigation;
-
-    if(item.profit>top.profit) top={name:item.crop,profit:item.profit};
-
-    table.innerHTML+=`
+    tableData.innerHTML+=`
     <tr>
-    <td>${item.village}</td>
-    <td>${item.crop}</td>
-    <td>${item.season}</td>
-    <td>₹${item.expense}</td>
-    <td>₹${item.income}</td>
-    <td class="${item.profit>=0?'profit':'loss'}">₹${item.profit}</td>
-    <td><button onclick="deleteRecord(${i})">Delete</button></td>
+    <td>${x.v}</td>
+    <td>${x.c}</td>
+    <td>${x.s}</td>
+    <td>₹${x.exp}</td>
+    <td>₹${x.inc}</td>
+    <td class="${x.p>=0?'profit':'loss'}">₹${x.p}</td>
+    <td><button onclick="del(${i})">X</button></td>
     </tr>`;
   });
 
-  document.getElementById("totalProfit").innerText=total;
-  document.getElementById("seedTotal").innerText=seed;
-  document.getElementById("fertTotal").innerText=fert;
-  document.getElementById("labourTotal").innerText=lab;
-  document.getElementById("irrTotal").innerText=irr;
-  document.getElementById("topCropBox").innerText="Top Crop: "+top.name;
+  totalProfit.innerText=total;
+  topCropBox.innerText=t[currentLang].top+": "+top.n;
 }
 
-function deleteRecord(i){
+function del(i){
   records.splice(i,1);
   localStorage.setItem("farmData",JSON.stringify(records));
-  displayRecords();
+  display();
 }
 
 function clearForm(){
   document.querySelectorAll("input").forEach(i=>i.value="");
 }
 
-function resetData(){
-  localStorage.clear();
-  records=[];
-  displayRecords();
+function loadSeason(){
+  season.innerHTML="";
+  seasons[currentLang].forEach(x=>season.innerHTML+=`<option>${x}</option>`);
 }
 
-function setEnglish(){ currentLang="en"; loadSeasons(); }
-function setKannada(){ currentLang="kn"; loadSeasons(); }
+function setEnglish(){currentLang="en";updateLang();loadSeason();}
+function setKannada(){currentLang="kn";updateLang();loadSeason();}
 
-function loadSeasons(){
-  let s=document.getElementById("season");
-  s.innerHTML="";
-  seasons[currentLang].forEach(x=>s.innerHTML+=`<option>${x}</option>`);
-}
-
-loadSeasons();
-displayRecords();
+setEnglish();
+display();
 
 </script>
 
