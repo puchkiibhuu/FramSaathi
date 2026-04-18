@@ -51,7 +51,8 @@ Profit = (Quantity × Rate) - Total Expense
 ## 👨‍💻 Author
 
 **Harshitha D Y**  
-GitHub: https://github.com/your-username  
+GitHub: https://github.com/puchkiibhuu
+ 
 
 ---
 
