@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>FarmSaathi / ಫಾರ್ಮ್ ಸಾಥಿ</title>
+<style>
+body{
+  font-family:Arial;
+  background:linear-gradient(to right,#56ab2f,#a8e063);
+  text-align:center;
+  margin:0;
+}
+h1{color:white;margin-top:20px;}
+.container{
+  background:white;width:420px;margin:auto;padding:20px;
+  border-radius:10px;box-shadow:0 5px 10px gray;
+}
+input,select{
+  width:80%;padding:10px;margin:6px;border-radius:5px;border:1px solid gray;
+}
+button{
+  padding:10px 15px;border:none;border-radius:5px;
+  background:green;color:white;cursor:pointer;margin:5px;
+}
+button:hover{background:darkgreen;}
+table{
+  width:90%;margin:auto;margin-top:20px;border-collapse:collapse;background:white;
+}
+th{background:green;color:white;padding:10px;}
+td{padding:8px;border:1px solid #ccc;}
+.profit{color:green;font-weight:bold;}
+.loss{color:red;font-weight:bold;}
+.summary{
+  background:white;width:320px;margin:auto;margin-top:20px;padding:10px;
+  border-radius:10px;box-shadow:0 3px 8px gray;
+}
+.expense-box{
+  background:white;width:350px;margin:auto;margin-top:20px;padding:10px;
+  border-radius:10px;box-shadow:0 3px 8px gray;
+}
+#lossAlertPopup{
+  display:none;position:fixed;top:10px;left:50%;
+  transform:translateX(-50%);
+  background:red;color:white;padding:15px;
+  border-radius:8px;box-shadow:0 3px 8px gray;z-index:1000;
+}
+#topCropBox{
+  background:white;width:350px;margin:auto;margin-top:20px;padding:10px;
+  border-radius:10px;box-shadow:0 3px 8px gray;
+  font-weight:bold;color:blue;
+}
+.voiceBtn{
+  padding:8px; margin-left:5px; font-size:16px; border-radius:50%; cursor:pointer; background:#ffcc00; color:black;
+}
+.voiceBtn:hover{background:#ff9900;}
+</style>
+</head>
+<body>
+
+<div id="lossAlertPopup"></div>
+
+<h1 id="title">🌾 FarmSaathi</h1>
+<p id="subtitle" style="color:white">Crop Expense & Profit Tracker</p>
+
+<!-- Language Toggle -->
+<button onclick="setEnglish()">English</button>
+<button onclick="setKannada()">ಕನ್ನಡ</button>
+
+<div class="container">
+  <!-- Village input with voice -->
+  <div style="position:relative; display:inline-block; width:100%;">
+    <input type="text" id="village" placeholder="Village Name">
+    <button class="voiceBtn" onclick="startListening('village')">🎤</button>
+  </div>
+
+  <!-- Crop input with voice -->
+  <div style="position:relative; display:inline-block; width:100%;">
+    <input type="text" id="crop" placeholder="Crop Name" oninput="suggestPrice()">
+    <button class="voiceBtn" onclick="startListening('crop')">🎤</button>
+  </div>
+
+  <select id="season"></select>
+
+  <h3 id="expenseHeading">Expense Details</h3>
+  <input type="number" id="seeds" placeholder="Seeds Cost">
+  <input type="number" id="fertilizer" placeholder="Fertilizer Cost">
+  <input type="number" id="labour" placeholder="Labour Cost">
+  <input type="number" id="irrigation" placeholder="Irrigation Cost">
+
+  <!-- Market Details Heading remains -->
+  <h3 id="marketHeading">Market Details</h3>
+
+  <input type="number" id="quantity" placeholder="Crop Quantity (kg)">
+  <input type="number" id="rate" placeholder="Market Rate per kg">
+
+  <br>
+  <button id="addBtn" onclick="addRecord()">Add Record</button>
+  <button id="clearBtn" onclick="clearForm()">Clear</button>
+  <button id="resetBtn" onclick="resetData()">Reset All</button>
+</div>
+
+<div class="summary">
+<h3 id="totalProfitLabel">Total Farm Profit: ₹ <span id="totalProfit">0</span></h3>
+</div>
+
+<table>
+<thead>
+<tr>
+<th id="thVillage">Village</th>
+<th id="thCrop">Crop</th>
+<th id="thSeason">Season</th>
+<th id="thExpense">Expense</th>
+<th id="thIncome">Income</th>
+<th id="thProfit">Profit/Loss</th>
+<th id="thAction">Action</th>
+</tr>
+</thead>
+<tbody id="tableData"></tbody>
+</table>
+
+<div class="expense-box">
+<h3 id="expenseBreakHeading">Expense Breakdown</h3>
+<p id="seedLabel">Seeds: ₹ <span id="seedTotal">0</span></p>
+<p id="fertLabel">Fertilizer: ₹ <span id="fertTotal">0</span></p>
+<p id="labourLabel">Labour: ₹ <span id="labourTotal">0</span></p>
+<p id="irrLabel">Irrigation: ₹ <span id="irrTotal">0</span></p>
+</div>
+
+<div id="topCropBox">Top Performing Crop: -</div>
+
+<script>
+let currentLang = "en"; 
+let records = JSON.parse(localStorage.getItem("farmData")) || [];
+const seasons = {
+  en:["Kharif (Monsoon) 2023","Kharif (Monsoon) 2024","Rabi (Winter) 2024","Zaid (Summer) 2024"],
+  kn:["ಖರಿಫ್ (ಮಳೆಗಾಲ) 2023","ಖರಿಫ್ (ಮಳೆಗಾಲ) 2024","ರಬಿ (ಚಳಿಗಾಲ) 2024","ಜೈದ್ (ಬೇಸಿಗೆ) 2024"]
+};
+
+// ===== Hardcoded Market Price Suggestions =====
+const marketPrices = {
+  en:{ "Rice": 25, "Wheat": 20, "Maize": 18, "Sugarcane": 35 },
+  kn:{ "ಅಕ್ಕಿ": 25, "ಗೋಧಿ": 20, "ಮಕ್ಕಿ": 18, "ಸಕ್ಕರೆ": 35 }
+};
+
+// ===== Voice Input =====
+function startListening(inputId){
+  if(!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)){
+    alert(currentLang=="kn" ? "ನಿಮ್ಮ ಬ್ರೌಸರ್ ವಾಯ್ಸ್ ಅನ್ನು ಬೆಂಬಲಿಸುವುದಿಲ್ಲ" : "Your browser does not support voice input");
+    return;
+  }
+  const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+  recognition.lang = currentLang === 'kn' ? 'kn-IN' : 'en-IN';
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+
+  recognition.start();
+  recognition.onresult = function(event){
+    const transcript = event.results[0][0].transcript.trim();
+    document.getElementById(inputId).value = transcript;
+    if(inputId==='crop') suggestPrice();
+  }
+  recognition.onerror = function(event){ console.error(event.error);}
+}
+
+// ===== Suggest Price =====
+function suggestPrice(){
+  const cropName = document.getElementById("crop").value.trim();
+  const rateInput = document.getElementById("rate");
+  if(currentLang==="en" && marketPrices.en[cropName]!==undefined){
+    rateInput.value = marketPrices.en[cropName];
+  } else if(currentLang==="kn" && marketPrices.kn[cropName]!==undefined){
+    rateInput.value = marketPrices.kn[cropName];
+  }
+}
+
+// ===== Loss Alert Popup =====
+function showLossAlert(message){
+  const popup=document.getElementById("lossAlertPopup");
+  popup.innerText=message;
+  popup.style.display="block";
+  setTimeout(()=>{popup.style.display="none";},4000);
+}
+function checkLossAlert(expense,profit){
+  if(profit<0 && Math.abs(profit)/expense > 0.10){
+    const msg = currentLang=="kn" ? "ನಷ್ಟ 10% ಕ್ಕಿಂತ ಹೆಚ್ಚು!" : "Loss exceeds 10% of total expense!";
+    showLossAlert(msg);
+  }
+}
+
+// ===== Add Record =====
+function addRecord(){
+  let village=document.getElementById("village").value||((currentLang=="kn")?"ಗ್ರಾಮ":"Village");
+  let crop=document.getElementById("crop").value||((currentLang=="kn")?"ಬೆಳೆ":"Crop");
+  let season=document.getElementById("season").value||((currentLang=="kn")?"ಸೀಸನ್":"Season");
+
+  let seeds=Number(document.getElementById("seeds").value)||0;
+  let fertilizer=Number(document.getElementById("fertilizer").value)||0;
+  let labour=Number(document.getElementById("labour").value)||0;
+  let irrigation=Number(document.getElementById("irrigation").value)||0;
+  let quantity=Number(document.getElementById("quantity").value)||0;
+  let rate=Number(document.getElementById("rate").value)||0;
+
+  let expense=seeds+fertilizer+labour+irrigation;
+  let income=quantity*rate;
+  let profit=income-expense;
+
+  checkLossAlert(expense,profit);
+
+  let data={village,crop,season,seeds,fertilizer,labour,irrigation,expense,income,profit};
+  records.push(data);
+  localStorage.setItem("farmData",JSON.stringify(records));
+  displayRecords();
+  clearForm();
+}
+
+// ===== Delete, Clear, Reset =====
+function deleteRecord(index){ records.splice(index,1); localStorage.setItem("farmData",JSON.stringify(records)); displayRecords(); }
+function clearForm(){document.querySelectorAll("input").forEach(i=>i.value="");}
+function resetData(){localStorage.removeItem("farmData");records=[];displayRecords();}
+
+// ===== Display Records & Multi-Crop Comparison =====
+function displayRecords(){
+  let table=document.getElementById("tableData");
+  table.innerHTML="";
+  let totalProfit=0,seedTotal=0,fertTotal=0,labourTotal=0,irrTotal=0;
+  let topCrop = {name:"-",profit:-Infinity};
+
+  records.forEach(function(item,index){
+    let profitClass=item.profit>=0?"profit":"loss";
+    totalProfit+=item.profit;
+    seedTotal+=item.seeds;
+    fertTotal+=item.fertilizer;
+    labourTotal+=item.labour;
+    irrTotal+=item.irrigation;
+
+    if(item.profit > topCrop.profit) topCrop={name:item.crop,profit:item.profit};
+
+    table.innerHTML+=`<tr>
+      <td>${item.village}</td>
+      <td>${item.crop}</td>
+      <td>${item.season}</td>
+      <td>₹${item.expense}</td>
+      <td>₹${item.income}</td>
+      <td class="${profitClass}">₹${item.profit}</td>
+      <td><button onclick="deleteRecord(${index})">${currentLang=="kn"?"ಅಳಿಸು":"Delete"}</button></td>
+    </tr>`;
+  });
+
+  document.getElementById("totalProfit").innerText=totalProfit;
+  document.getElementById("seedTotal").innerText=seedTotal;
+  document.getElementById("fertTotal").innerText=fertTotal;
+  document.getElementById("labourTotal").innerText=labourTotal;
+  document.getElementById("irrTotal").innerText=irrTotal;
+
+  document.getElementById("topCropBox").innerText=
+    currentLang=="kn" ? `ಅಧಿಕ ಲಾಭದ ಬೆಳೆ: ${topCrop.name}` : `Top Performing Crop: ${topCrop.name}`;
+}
+
+// ===== Language Toggle =====
+function setEnglish(){
+  currentLang="en";
+  document.getElementById("title").innerText="🌾 FarmSaathi";
+  document.getElementById("subtitle").innerText="Crop Expense & Profit Tracker";
+  document.getElementById("totalProfitLabel").innerHTML="Total Farm Profit: ₹ <span id='totalProfit'>0</span>";
+  document.getElementById("village").placeholder="Village Name";
+  document.getElementById("crop").placeholder="Crop Name";
+  document.getElementById("seeds").placeholder="Seeds Cost";
+  document.getElementById("fertilizer").placeholder="Fertilizer Cost";
+  document.getElementById("labour").placeholder="Labour Cost";
+  document.getElementById("irrigation").placeholder="Irrigation Cost";
+  document.getElementById("quantity").placeholder="Crop Quantity (kg)";
+  document.getElementById("rate").placeholder="Market Rate per kg";
+  document.getElementById("addBtn").innerText="Add Record";
+  document.getElementById("clearBtn").innerText="Clear";
+  document.getElementById("resetBtn").innerText="Reset All";
+  document.getElementById("expenseHeading").innerText="Expense Details";
+  document.getElementById("marketHeading").innerText="Market Details";
+  document.getElementById("expenseBreakHeading").innerText="Expense Breakdown";
+  document.getElementById("seedLabel").innerHTML="Seeds: ₹ <span id='seedTotal'>0</span>";
+  document.getElementById("fertLabel").innerHTML="Fertilizer: ₹ <span id='fertTotal'>0</span>";
+  document.getElementById("labourLabel").innerHTML="Labour: ₹ <span id='labourTotal'>0</span>";
+  document.getElementById("irrLabel").innerHTML="Irrigation: ₹ <span id='irrTotal'>0</span>";
+  document.getElementById("thVillage").innerText="Village";
+  document.getElementById("thCrop").innerText="Crop";
+  document.getElementById("thSeason").innerText="Season";
+  document.getElementById("thExpense").innerText="Expense";
+  document.getElementById("thIncome").innerText="Income";
+  document.getElementById("thProfit").innerText="Profit/Loss";
+  document.getElementById("thAction").innerText="Action";
+  let season=document.getElementById("season");
+  season.innerHTML="";seasons.en.forEach(s=>season.innerHTML+=`<option>${s}</option>`);
+  displayRecords();
+}
+
+function setKannada(){
+  currentLang="kn";
+  document.getElementById("title").innerText="🌾 ಫಾರ್ಮ್ ಸಾಥಿ";
+  document.getElementById("subtitle").innerText="ಬೆಳೆ ವೆಚ್ಚ ಮತ್ತು ಲಾಭ ಟ್ರ್ಯಾಕರ್";
+  document.getElementById("totalProfitLabel").innerHTML="ಒಟ್ಟು ಫಾರ್ಮ್ ಲಾಭ: ₹ <span id='totalProfit'>0</span>";
+  document.getElementById("village").placeholder="ಗ್ರಾಮದ ಹೆಸರು";
+  document.getElementById("crop").placeholder="ಬೆಳೆ ಹೆಸರು";
+  document.getElementById("seeds").placeholder="ಬೀಯ ಬೀಜ ವೆಚ್ಚ";
+  document.getElementById("fertilizer").placeholder="ರಸಗೊಬ್ಬರ ವೆಚ್ಚ";
+  document.getElementById("labour").placeholder="ಕಾರ್ಮಿಕ ವೆಚ್ಚ";
+  document.getElementById("irrigation").placeholder="ನೀರಾವರಿ ವೆಚ್ಚ";
+  document.getElementById("quantity").placeholder="ಬೆಳೆ ಪ್ರಮಾಣ (ಕೆ.ಜಿ)";
+  document.getElementById("rate").placeholder="ಪ್ರತಿ ಕೆ.ಜಿ ದರ";
+  document.getElementById("addBtn").innerText="ರೆಕಾರ್ಡ್ ಸೇರಿಸಿ";
+  document.getElementById("clearBtn").innerText="ಖಾಲಿ ಮಾಡಿ";
+  document.getElementById("resetBtn").innerText="ಎಲ್ಲಾ ರಿಸೆಟ್ ಮಾಡಿ";
+  document.getElementById("expenseHeading").innerText="ವೆಚ್ಚ ವಿವರ";
+  document.getElementById("marketHeading").innerText="ಬಜಾರ್ ವಿವರ";
+  document.getElementById("expenseBreakHeading").innerText="ವೆಚ್ಚ ವಿಶ್ಲೇಷಣೆ";
+  document.getElementById("seedLabel").innerHTML="ಬೀಯ ಬೀಜ: ₹ <span id='seedTotal'>0</span>";
+  document.getElementById("fertLabel").innerHTML="ರಸಗೊಬ್ಬರ: ₹ <span id='fertTotal'>0</span>";
+  document.getElementById("labourLabel").innerHTML="ಕಾರ್ಮಿಕ: ₹ <span id='labourTotal'>0</span>";
+  document.getElementById("irrLabel").innerHTML="ನೀರಾವರಿ: ₹ <span id='irrTotal'>0</span>";
+  document.getElementById("thVillage").innerText="ಗ್ರಾಮ";
+  document.getElementById("thCrop").innerText="ಬೆಳೆ";
+  document.getElementById("thSeason").innerText="ಸೀಸನ್";
+  document.getElementById("thExpense").innerText="ವೆಚ್ಚ";
+  document.getElementById("thIncome").innerText="ಆದಾಯ";
+  document.getElementById("thProfit").innerText="ಲಾಭ/ನಷ್ಟ";
+  document.getElementById("thAction").innerText="ಕ್ರಿಯಾ";
+  let season=document.getElementById("season");
+  season.innerHTML="";seasons.kn.forEach(s=>season.innerHTML+=`<option>${s}</option>`);
+  displayRecords();
+}
+
+// ===== Initialize =====
+setEnglish();
+displayRecords();
+</script>
+</body>
+</html>
