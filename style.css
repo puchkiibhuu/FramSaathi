@@ -1,0 +1,105 @@
+body{
+  font-family:Arial;
+  background:linear-gradient(to right,#56ab2f,#a8e063);
+  text-align:center;
+  margin:0;
+}
+
+h1{
+  color:white;
+  margin-top:20px;
+}
+
+.container{
+  background:white;
+  width:90%;
+  max-width:420px;
+  margin:auto;
+  padding:20px;
+  border-radius:10px;
+  box-shadow:0 5px 10px gray;
+}
+
+.input-group{
+  display:flex;
+  align-items:center;
+  margin:6px;
+}
+
+.input-group input{
+  flex:1;
+  padding:10px;
+  border-radius:5px;
+  border:1px solid gray;
+}
+
+.voiceBtn{
+  padding:8px;
+  margin-left:5px;
+  border-radius:50%;
+  background:#ffcc00;
+  cursor:pointer;
+}
+
+input,select{
+  width:90%;
+  padding:10px;
+  margin:6px;
+  border-radius:5px;
+  border:1px solid gray;
+}
+
+button{
+  padding:10px 15px;
+  border:none;
+  border-radius:5px;
+  background:green;
+  color:white;
+  cursor:pointer;
+  margin:5px;
+}
+
+table{
+  width:95%;
+  margin:auto;
+  margin-top:20px;
+  border-collapse:collapse;
+  background:white;
+}
+
+th{
+  background:green;
+  color:white;
+  padding:10px;
+}
+
+td{
+  padding:8px;
+  border:1px solid #ccc;
+}
+
+.profit{
+  color:green;
+  font-weight:bold;
+}
+
+.loss{
+  color:red;
+  font-weight:bold;
+}
+
+.summary,#topCropBox{
+  background:white;
+  width:90%;
+  max-width:350px;
+  margin:auto;
+  margin-top:20px;
+  padding:10px;
+  border-radius:10px;
+  box-shadow:0 3px 8px gray;
+}
+
+.status{
+  font-size:12px;
+  color:gray;
+}
